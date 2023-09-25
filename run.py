@@ -3,6 +3,37 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import torch
 import modules
 
+
+def inputData(inputs, objectClass, output={}, prompt={}, data={}):
+	inputType = objectClass.inputType()
+	allData = {}
+
+	for i in inputs:
+		data = inputs[i]
+
+		if isinstance(data, list):
+			inputIdentifier = data[0]
+			outputIndex = data[1]
+
+			outputObject = output[inputIdentifier][outputIndex]
+			allData[i] = outputObject
+		else:
+			if ("required" in inputType and i in inputType["required"]) or ("optional" in inputType and i in inputType["optional"]):
+				allData = data
+
+	
+
+	if "hidden" in inputType:
+		hidden = inputType["hidden"]
+
+		for i in hidden:
+			if hidden[i] == "PROMPT":
+				allData[i] = prompt
+			if hidden[i] == "info":
+				if "info" in data:
+					allData[i] = data["info"]
+	return allData
+
 def recursiveExecute(prompt, output, current, data={}):
 	inputs = prompt[current]["inputs"]
 	classType = prompt[current]["classType"]
@@ -24,33 +55,9 @@ def recursiveExecute(prompt, output, current, data={}):
 
 			if inputIdentifier not in output:
 				executed += recursiveExecute(prompt, output, inputIdentifier, data)
-
-	allData = {}
-
-	for i in inputs:
-		data = inputs[i]
-
-		if isinstance(data, list):
-			inputIdentifier = data[0]
-			outputIndex = data[1]
-
-			outputObject = output[inputIdentifier][outputIndex]
-			allData[i] = outputObject
-		else:
-			if ("required" in inputType and i in inputType["required"]) or ("optional" in inputType and i in inputType["optional"]):
-				allData = data
-
+	
+	allData = inputData(inputs, objectClass, output, prompt, data)
 	newObject = objectClass()
-
-	if "hidden" in inputType:
-		hidden = inputType["hidden"]
-
-		for i in hidden:
-			if hidden[i] == "PROMPT":
-				allData[i] = prompt
-			if hidden[i] == "info":
-				if "info" in data:
-					allData[i] = data["info"]
 
 	output[current] = getattr(newObject, newObject.function)(**allData)
 	return executed + [current]
@@ -58,13 +65,31 @@ def recursiveExecute(prompt, output, current, data={}):
 def recursiveDelete(prompt, previous, output, current):
 	inputs = prompt[current]["inputs"]
 	classType = prompt[current]["classType"]
+	objectClass = modules.moduleMap[classType]
+
+	changedPrevious = ""
+	changed = ""
+
+	if hasattr(objectClass, "changed"):
+		if "changed" not in prompt[current]:
+			if current in previous and "changed" in previous[current]:
+				changedPrevious = previous[current]["changed"]
+			
+			allData = inputData(inputs, objectClass)
+
+			changed = objectClass.changed(**allData)
+			prompt[current]["changed"] = changed
+		else:
+			changed = prompt[current]["changed"]
 
 	if current not in output:
 		return True
 
 	toDelete = False
 
-	if current not in previous:
+	if changed != changedPrevious:
+		toDelete = True
+	elif current not in previous:
 		toDelete = True
 	elif inputs == previous[current]["inputs"]:
 		for i in inputs:

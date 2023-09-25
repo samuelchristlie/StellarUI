@@ -1,4 +1,4 @@
-import os, sys, json
+import os, sys, json, hashlib
 import numpy as np
 
 from PIL import Image
@@ -256,6 +256,16 @@ class LoadImage:
 		path = os.path.join(self.folder, image)
 		image = np.array(Image.open(path).convert("RGB")).astype(np.float32) / 255.0
 		return torch.from_numpy(image[None])[None,]
+
+	@classmethod
+	def changed(x, image):
+		path = os.path.join(x.folder, image)
+		hasher = hashlib.sha256()
+
+		with open(path, "rb") as f:
+			hasher.update(f.read())
+
+		return hasher.digest().hex()
 
 
 
