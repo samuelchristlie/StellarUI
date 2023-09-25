@@ -71,6 +71,12 @@ class EncodeVAE:
 		function = "encode"
 
 	def encode(self, vae, image):
+		x = (image.shape[1] // 64) * 64
+		y = (image.shape[2] // 64) * 64
+
+		if image.shape[1] != x or image.shape[2] != y:
+			image = image[:,:x,:y,:]
+
 		return(vae.encode(image), )
 
 class LoadModel:
@@ -234,6 +240,25 @@ class ImageSave:
 			img.save(f"{self.folder}/{self.prefix}_{self.counter:05}.png", pnginfo=metadata, optimize=True)
 			self.counter += 1
 
+class LoadImage:
+	folder = os.path.join(os.path.dirname(os.path.realpath(__file__)), "input")
+
+	@classmethod
+	def inputType(x):
+		return {"required": {
+				"image": (os.listdir(x.folder),)
+		}}
+
+	returnType = ("IMAGE", )
+	function = "load"
+
+	def load(self, image):
+		path = os.path.join(self.folder, image)
+		image = np.array(Image.open(path).convert("RGB")).astype(np.float32) / 255.0
+		return torch.from_numpy(image[None])[None,]
+
+
+
 moduleMap = {
 	"KSampler": KSampler,
 	"LoadModel": LoadModel,
@@ -244,4 +269,5 @@ moduleMap = {
 	"EmptyLatent": EmptyLatent,
 	"UpscaleLatent": UpscaleLatent,
 	"ImageSave": ImageSave,
+	"LoadImage": LoadImage
 }
