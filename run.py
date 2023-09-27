@@ -304,9 +304,9 @@ def worker(process):
 		process.done()
 
 class PromptServer(BaseHTTPRequestHandler):
-	def _set_headers(self, code=200, ct='text/html'):
+	def _set_headers(self, code=200, ct="text/html"):
 		self.send_response(code)
-		self.send_header('Content-type', ct)
+		self.send_header("Content-type", ct)
 		self.end_headers()
 
 	def log_message(self, format, *args):
@@ -314,28 +314,34 @@ class PromptServer(BaseHTTPRequestHandler):
 
 	def do_GET(self):
 		if self.path == "/prompt":
-			self._set_headers(ct='application/json')
+			self._set_headers(ct="application/json")
 			prompt_info = {}
 			exec_info = {}
-			exec_info['queue_remaining'] = self.server.process.unfinished_tasks
-			prompt_info['exec_info'] = exec_info
-			self.wfile.write(json.dumps(prompt_info).encode('utf-8'))
+			exec_info["queue_remaining"] = self.server.process.unfinished_tasks
+			prompt_info["exec_info"] = exec_info
+			self.wfile.write(json.dumps(prompt_info).encode("utf-8"))
 		elif self.path == "/object_info":
-			self._set_headers(ct='application/json')
+			self._set_headers(ct="application/json")
 			out = {}
 
 			for i in modules.moduleMap:
 				objectClass = nodes.moduleMap[i]
 				info = {}
-				info['input'] = objectClass.inputType()
-				info['output'] = objectClass.returnType
-				info['name'] = x #TODO
-				info['description'] = ''
+				info["input"] = objectClass.inputType()
+				info["output"] = objectClass.returnType
+				info["name"] = x #TODO
+				info["description"] = ""
 				out[i] = info
-			self.wfile.write(json.dumps(out).encode('utf-8'))
+			self.wfile.write(json.dumps(out).encode("utf-8"))
 
 		elif self.path[1:] in os.listdir(self.server.serverDirectory):
-			self._set_headers()
+			if self.path[1:].endswith(".css"):
+                self._set_headers(ct="text/css")
+            elif self.path[1:].endswith(".js"):
+                self._set_headers(ct="text/javascript")
+            else:
+                self._set_headers()
+
 			with open(os.path.join(self.server.serverDirectory, self.path[1:]), "rb") as f:
 				self.wfile.write(f.read())
 		else:
@@ -351,11 +357,11 @@ class PromptServer(BaseHTTPRequestHandler):
 		out_string = ""
 		if self.path == "/prompt":
 			print("[!] Prompt received")
-			self.data_string = self.rfile.read(int(self.headers['Content-Length']))
+			self.data_string = self.rfile.read(int(self.headers["Content-Length"]))
 			json_data = json.loads(self.data_string)
 
 			if "number" in json_data:
-				number = float(json_data['number'])
+				number = float(json_data["number"])
 			else:
 				number = self.server.number
 				self.server.number += 1
@@ -376,7 +382,7 @@ class PromptServer(BaseHTTPRequestHandler):
 					print("[!] Invalid prompt:", valid[1])
 		self._set_headers(code=resp_code)
 		self.end_headers()
-		self.wfile.write(out_string.encode('utf8'))
+		self.wfile.write(out_string.encode("utf8"))
 		return
 
 def run(process, address="127.0.0.1", port=8585):
