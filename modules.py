@@ -138,6 +138,7 @@ class EmptyLatent:
 
 class UpscaleLatent:
 	methods = ["nearest-exact", "bilinear", "area"]
+	crops = ["disabled", "center"]
 
 	@classmethod
 	def inputType(x):
@@ -146,12 +147,31 @@ class UpscaleLatent:
 				"method": (x.methods, ),
 				"width": ("INT", {"default": 512, "min":64, "max": 4096, "step": 64}),
 				"height": ("INT", {"default": 512, "min":64, "max": 4096, "step": 64}),
+				"crop": (x.crops),
 		}}
 
 	returnType = ("LATENT", )
 	function = "upscale"
 
 	def upscale(self, samples, method, width, height):
+		if crop == "center":
+			oW = samples.shape[3]
+			oH = samples.shape[2]
+			oA = oW/oH
+
+			nA = width/height
+			x = 0
+			y = 0
+
+			if oA > nA:
+				x = round(oW * (1 - 1 * (nA / oA)) / 2)
+			elif oA < nA:
+				y = round(oH * (1 - 1 * (oA / nA)) / 2)
+
+			samples = samples[:, :, y:oH-y, x:oH-x]
+
+
+
 		upscale = torch.nn.functional.interpolate(samples, size=(height // 8, width // 8), mode=method)
 		return (upscale, )
 
