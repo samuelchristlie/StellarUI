@@ -209,15 +209,17 @@ class ImageSave:
 		self.folder = os.path.join(os.path.dirname(os.path.realpath(__file__)), "output")
 		self.prefix = "StellarUI"
 		
-		try:
-			self.counter = int(max(filter(lambda a: f"{self.prefix}_" in a, os.listdir(self.folder))).split("_")[-1]) + 1
-		except:
-			self.counter = 1
+		# try:
+		# 	self.counter = int(max(filter(lambda a: f"{self.prefix}_" in a, os.listdir(self.folder))).split("_")[-1]) + 1
+		# except:
+		# 	self.counter = 1
 
 	@classmethod
 	def inputType(x):
 		return {"required":
-			{"images": ("IMAGE", )},
+			{"images": ("IMAGE", ),
+			"prefix": ("STRING", {"default": self.prefix})
+			},
 			"hidden": {"prompt": "PROMPT", "info": "INFO"}
 		}
 
@@ -226,7 +228,26 @@ class ImageSave:
 
 	outputNode = True
 
-	def save(self, images, prompt=None, info=None):
+	def save(self, images, prefix=self.prefix, prompt=None, info=None):
+		def mapName(name):
+			n = len(prefix)
+			number = 0
+
+			try:
+				number = int(name[n+1:].split("_")[-1])
+			except:
+				pass
+
+			return (number, name[:n+1])
+
+		try:
+			counter = max(filter(lambda a: a[1][:-1] == prefix and a[1][-1] == "_", map(mapName, os.listdir(self.folder))))[0] + 1
+
+		except ValueError:
+			counter = 1
+
+
+
 		for image in images:
 			i = 255. * image.cpu().numpy()
 			img = Image.fromarray(i.astype(np.uint8))
@@ -237,8 +258,8 @@ class ImageSave:
 			if info is not None:
 				for x in info:
 					metadata.add_text(x, json.dumps(info[x]))
-			img.save(f"{self.folder}/{self.prefix}_{self.counter:05}.png", pnginfo=metadata, optimize=True)
-			self.counter += 1
+			img.save(f"{self.folder}/{prefix}_{counter:05}.png", pnginfo=metadata, optimize=True)
+			counter += 1
 
 class LoadImage:
 	folder = os.path.join(os.path.dirname(os.path.realpath(__file__)), "input")
