@@ -62,6 +62,28 @@ def recursiveExecute(prompt, output, current, data={}):
 	output[current] = getattr(newObject, newObject.function)(**allData)
 	return executed + [current]
 
+def recursiveQueueExecute(prompt, output, current):
+	inputs = prompt[current]["inputs"]
+
+	queue = []
+
+	if current in output:
+		return []
+
+	for i in inputs:
+		data = inputs[i]
+
+		if isinstance(data, list):
+			inputIdentifier = data[0]
+			outputIndex = data[1]
+
+			if inputIdentifier not in output:
+				queue = recursiveQueueExecute(prompt, output, inputIdentifier)
+
+	return queue + [current]
+
+
+
 def recursiveDelete(prompt, previous, output, current):
 	inputs = prompt[current]["inputs"]
 	classType = prompt[current]["classType"]
@@ -223,10 +245,20 @@ class Executor:
 			executed = []
 
 			try:
+				queue = []
 				for i in prompt:
-					class_ = modules.moduleMap[prompt[i]["type"]]
+					class_ = modules.moduleMap[prompt[i]["classType"]]
 
 					if hasattr(class_, "outputNode"):
+						queue += [(0, x)]
+
+				while len(queue) > 0:
+					queue = sorted(list(map(lambda a: (len(recursiveQueueExecute(prompt, self.output, a[-1])), a[-1]), queue)))
+					i = queue.pop(0)[-1]
+
+					class_ = modules.moduleMap[prompt[i]["classType"]]
+
+					if hasattr(class_, "outputNode")
 						if class_.outputNode == True:
 							valid = False
 
