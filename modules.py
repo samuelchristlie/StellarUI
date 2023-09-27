@@ -27,7 +27,7 @@ class EncodeCLIP:
 
 	def inputType(x):
 		return {"required": {
-				"text": ("STRING",),
+				"text": ("STRING", {"multiline": True}),
 				"clip": ("CLIP", )
 		}}
 
